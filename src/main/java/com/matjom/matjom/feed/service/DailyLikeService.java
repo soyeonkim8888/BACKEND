@@ -11,6 +11,7 @@ import com.matjom.matjom.common.exception.message.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,12 +31,13 @@ public class DailyLikeService {
     private final Clock clock;
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
+
     @Autowired                                                          // 수정제안 2024-09-24: 프로덕션 기본 시계
-    public DailyLikeService(DailyLikeRepository dailyLikeRepository) {
-        this(dailyLikeRepository, Clock.system(KST));
+    public DailyLikeService(DailyLikeRepository dailyLikeRepository, ApplicationEventPublisher eventPublisher ) {
+        this(dailyLikeRepository, Clock.system(KST),eventPublisher);
     }
 
-    DailyLikeService(DailyLikeRepository dailyLikeRepository, Clock clock) { // 수정제안 2024-09-24: 테스트 주입용
+    DailyLikeService(DailyLikeRepository dailyLikeRepository, Clock clock,ApplicationEventPublisher eventPublisher) { // 수정제안 2024-09-24: 테스트 주입용
         this.dailyLikeRepository = dailyLikeRepository;
         this.clock = clock.withZone(KST);
     }
@@ -115,7 +117,14 @@ public class DailyLikeService {
 
         // 3. 통계 업데이트 (비동기 또는 이벤트)
         // TODO: 통계 업데이트 이벤트 발생
-
+        eventPublisher.publishEvent(new DailyLikeCreatedEvent( // 9월26일 재수정: 좋아요 생성 이벤트 발행
+                savedLike.getId(),
+                savedLike.getUserId(),
+                savedLike.getPlaceId(),
+                savedLike.getVisitId(),
+                savedLike.getDateKst(),
+                savedLike.getCreatedAt()
+        ));
         log.info("좋아요 등록 완료: likeId={}", savedLike.getId());
         return DailyLikeResponseDTO.from(savedLike);
     }
